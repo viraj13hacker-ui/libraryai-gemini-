@@ -1,10 +1,11 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Book } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const getBookRecommendations = async (idea: string): Promise<Book[]> => {
   try {
+    // Initialize inside the function to avoid top-level environment variable issues
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: `I am researching the following idea or topic: "${idea}". 
