@@ -36,9 +36,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 relative z-0">
       {/* Background decoration */}
-      <div className="absolute top-0 left-0 right-0 h-96 bg-gradient-to-b from-slate-200/50 to-transparent -z-1 pointer-events-none"></div>
+      <div className="absolute top-0 left-0 right-0 h-96 bg-gradient-to-b from-slate-200/50 to-transparent z-[-1] pointer-events-none"></div>
 
       <div className="container mx-auto max-w-6xl px-4 pt-4">
         <Header />
