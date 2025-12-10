@@ -1,24 +1,68 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { SearchInput } from './components/SearchInput';
 import { BookCard } from './components/BookCard';
 import { LoadingState } from './components/LoadingState';
 import { getBookRecommendations } from './services/libraryService';
 import { Book, LoadingState as LoadStatus } from './types';
-import { AlertCircle, BookOpenCheck } from 'lucide-react';
+import { AlertCircle, BookOpenCheck, KeyRound, Terminal } from 'lucide-react';
 
 export default function App() {
   const [books, setBooks] = useState<Book[]>([]);
   const [status, setStatus] = useState<LoadStatus>(LoadStatus.IDLE);
   const [currentQuery, setCurrentQuery] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [hasApiKey, setHasApiKey] = useState<boolean>(false);
+  const [isCheckingKey, setIsCheckingKey] = useState<boolean>(true);
+  const [isAiStudioAvailable, setIsAiStudioAvailable] = useState<boolean>(false);
+
+  // Check for API Key on mount
+  useEffect(() => {
+    const checkKey = async () => {
+      try {
+        if (window.aistudio) {
+          setIsAiStudioAvailable(true);
+          const hasKey = await window.aistudio.hasSelectedApiKey();
+          setHasApiKey(hasKey);
+        } else {
+          setIsAiStudioAvailable(false);
+          // Check for env var directly if running locally
+          // @ts-ignore
+          const envKey = (typeof process !== 'undefined' && process.env && process.env.API_KEY);
+          setHasApiKey(!!envKey);
+        }
+      } catch (e) {
+        console.error("Error checking API key status", e);
+        // Fallback to false so we show the auth screen
+        setHasApiKey(false);
+      } finally {
+        setIsCheckingKey(false);
+      }
+    };
+    checkKey();
+  }, []);
+
+  const handleSelectKey = async () => {
+    try {
+      if (window.aistudio) {
+        await window.aistudio.openSelectKey();
+        // Assume success after the modal closes/resolves
+        setHasApiKey(true);
+        // Reset error state if we had one
+        setError(null);
+      }
+    } catch (e) {
+      console.error("Error selecting API key", e);
+      setError("Failed to select API key. Please try again.");
+    }
+  };
 
   const handleSearch = async (query: string) => {
     setStatus(LoadStatus.SEARCHING);
     setError(null);
     setCurrentQuery(query);
     
-    // Simulate a minimum loading time for better UX (so the user sees the transition)
+    // Simulate a minimum loading time for better UX
     const minLoadTime = new Promise(resolve => setTimeout(resolve, 800));
     
     try {
@@ -30,10 +74,78 @@ export default function App() {
       setStatus(LoadStatus.SUCCESS);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Something went wrong.");
-      setStatus(LoadStatus.ERROR);
+      
+      // If the error specifically mentions the API key, force the key selection screen again
+      if (err.message && err.message.includes("API_KEY")) {
+        setHasApiKey(false);
+        setError("API Key verification failed. Please check your key configuration.");
+        setStatus(LoadStatus.IDLE);
+      } else {
+        setError(err.message || "Something went wrong.");
+        setStatus(LoadStatus.ERROR);
+      }
     }
   };
+
+  if (isCheckingKey) {
+    return <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="w-8 h-8 border-4 border-library-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>;
+  }
+
+  // API Key Selection Screen
+  if (!hasApiKey) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-slate-100 animate-fade-in-up">
+          <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <KeyRound className="w-8 h-8 text-indigo-600" />
+          </div>
+          <h2 className="text-2xl font-serif font-bold text-slate-900 mb-3 text-center">
+            Authentication Required
+          </h2>
+          <p className="text-slate-600 mb-8 leading-relaxed text-center">
+            To access the intelligent library research assistant, you need to connect your Google API key.
+          </p>
+
+          {isAiStudioAvailable ? (
+            <div className="space-y-4">
+              <button
+                onClick={handleSelectKey}
+                className="w-full py-3 px-4 bg-gradient-to-r from-library-600 to-indigo-600 hover:from-library-700 hover:to-indigo-700 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5"
+              >
+                Connect API Key
+              </button>
+              <p className="text-xs text-center text-slate-500">
+                Uses Google GenAI SDK. See <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">Billing Documentation</a>.
+              </p>
+            </div>
+          ) : (
+            <div className="bg-slate-50 rounded-lg p-5 border border-slate-200 text-left">
+              <div className="flex items-center gap-2 mb-3 text-slate-800 font-semibold">
+                <Terminal className="w-4 h-4" />
+                <span>Local Setup Instructions</span>
+              </div>
+              <p className="text-sm text-slate-600 mb-3">
+                It looks like you are running this app locally. You must set the environment variable manually.
+              </p>
+              <ol className="list-decimal list-inside text-sm text-slate-600 space-y-2 font-mono bg-white p-3 rounded border border-slate-100">
+                <li>Create a <span className="text-indigo-600">.env</span> file in the root.</li>
+                <li>Add: <span className="text-indigo-600">API_KEY=your_key_here</span></li>
+                <li>Restart your development server.</li>
+              </ol>
+            </div>
+          )}
+          
+          {error && (
+            <div className="mt-6 p-3 bg-red-50 text-red-700 text-sm rounded-lg text-center border border-red-100">
+              {error}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 relative z-0">

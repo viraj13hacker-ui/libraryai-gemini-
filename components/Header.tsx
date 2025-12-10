@@ -1,5 +1,6 @@
 import React from 'react';
 import { BookOpen, Library } from 'lucide-react';
+import { libraryCatalog } from '../data/sampleLibrary';
 
 export const Header: React.FC = () => {
   return (
@@ -11,8 +12,9 @@ export const Header: React.FC = () => {
         </h1>
       </div>
       <p className="text-slate-500 max-w-lg mx-auto text-sm md:text-base font-light">
-        Your intelligent research companion. Enter a topic, concept, or abstract idea, 
-        and we'll curate a bibliography to jumpstart your journey.
+        Your intelligent research companion. Searching 
+        <span className="font-semibold text-library-600"> {libraryCatalog.length} curated titles </span> 
+        from our exclusive catalog to jumpstart your bibliography.
       </p>
     </header>
   );
